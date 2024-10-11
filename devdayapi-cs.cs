@@ -7,6 +7,9 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Azure.AI.OpenAI;
+using Azure.Identity;
+using OpenAI.Chat;
 
 namespace Company.Function
 {
@@ -23,7 +26,19 @@ namespace Company.Function
             dynamic data = JsonConvert.DeserializeObject(requestBody);
             string promptText = data?.text ?? string.Empty;
 
-            return new OkObjectResult("");
+            AzureOpenAIClient client = new(
+                new Uri(Environment.GetEnvironmentVariable("OPENAI_ENDPOINT")),
+                new DefaultAzureCredential()
+            );
+            ChatClient chatClient = client.GetChatClient(Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME"));
+            ChatCompletion completion = await chatClient.CompleteChatAsync(
+                [
+                    new SystemChatMessage(Prompts.SystemMessage),
+                    new UserChatMessage(promptText)
+
+                ]);
+
+            return new OkObjectResult(completion.Content[0].Text);
         }
     }
 }
